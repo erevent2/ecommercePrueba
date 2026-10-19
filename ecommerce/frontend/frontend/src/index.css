@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  /* Variables de colores personalizados */
+  --color-blossom-50: #fdf8f6;
+  --color-blossom-100: #f2e8e5;
+  --color-blossom-900: #2c1c19;
+  --color-blossom-accent: #d97757;
+  
+  /* Fuentes */
+  --font-sans: "Inter", sans-serif;
+  --font-serif: "Playfair Display", serif;
+}
+
+/* Estilos base usando las variables del tema */
+body {
+  background-color: var(--color-blossom-50);
+  color: var(--color-blossom-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  letter-spacing: -0.015em;
+}
+
+/* Utilidad SCSS para el loader */
+.loader-spinner {
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-left-color: var(--color-blossom-accent);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin { 
+  0% { transform: rotate(0deg); } 
+  100% { transform: rotate(360deg); } 
+}
