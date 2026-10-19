@@ -2,14 +2,31 @@ import { useQuery } from '@tanstack/react-query';
 import { useCart } from '../context/CartContext';
 import { api } from '../api/axiosConfig';
 
+interface OrderHistoryItem {
+  productId: number;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+interface OrderHistoryEntry {
+  id: number;
+  status: string;
+  items: OrderHistoryItem[];
+}
+
 export default function CartAndHistory() {
   const { cart, removeFromCart, clearCart, totalAmount } = useCart();
+  const authToken = localStorage.getItem('blossom_token');
 
   // Obtenemos el historial de órdenes del backend
-  const { data: history, isLoading, refetch } = useQuery({
-    queryKey: ['orderHistory'],
+  const { data: history, isLoading, isError, refetch } = useQuery({
+    queryKey: ['orderHistory', authToken],
+    enabled: Boolean(authToken),
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async () => {
-      const { data } = await api.get('/orders');
+      const { data } = await api.get<OrderHistoryEntry[]>('/orders');
       return data;
     },
   });
@@ -25,7 +42,7 @@ export default function CartAndHistory() {
       alert('¡Orden creada exitosamente!');
       clearCart();
       refetch(); // Refrescamos el historial automáticamente
-    } catch (error) {
+    } catch {
       alert('Error al procesar la orden.');
     }
   };
@@ -77,13 +94,17 @@ export default function CartAndHistory() {
       <section className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-blossom-900/5">
         <h2 className="mb-6 font-serif text-2xl font-semibold text-blossom-900">Historial de Órdenes</h2>
         
-        {isLoading ? (
+        {!authToken ? (
+          <p className="text-blossom-900/60">Inicia sesión para consultar tu historial de órdenes.</p>
+        ) : isLoading ? (
           <div className="loader-spinner"></div>
+        ) : isError ? (
+          <p role="alert" className="text-red-600">No se pudo cargar el historial de órdenes. Inténtalo de nuevo.</p>
         ) : !history || history.length === 0 ? (
           <p className="text-blossom-900/60">Aún no has realizado ninguna compra.</p>
         ) : (
           <div className="space-y-6">
-            {history.map((order: any) => (
+            {history.map((order) => (
               <div key={order.id} className="rounded-xl bg-blossom-50 p-5 ring-1 ring-blossom-900/10">
                 <div className="mb-3 flex items-center justify-between border-b border-blossom-900/10 pb-3">
                   <span className="text-sm font-medium text-blossom-900/60">Orden #{order.id}</span>
@@ -92,8 +113,8 @@ export default function CartAndHistory() {
                   </span>
                 </div>
                 <div className="space-y-2">
-                  {order.items.map((item: any, idx: number) => (
-                    <div key={idx} className="flex justify-between text-sm">
+                  {order.items.map((item) => (
+                    <div key={`${order.id}-${item.productId}`} className="flex justify-between text-sm">
                       <span className="text-blossom-900">{item.quantity}x {item.productName}</span>
                       <span className="font-medium text-blossom-900">${item.unitPrice.toFixed(2)}</span>
                     </div>

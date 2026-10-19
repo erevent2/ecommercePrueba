@@ -11,6 +11,7 @@ function AddItem() {
 }
 
 function renderPage(history: unknown[] = []) {
+  localStorage.setItem('blossom_token', 'test-user-token')
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   vi.spyOn(api, 'get').mockResolvedValue({ data: history })
   const rendered = render(
@@ -25,7 +26,10 @@ function renderPage(history: unknown[] = []) {
 }
 
 describe('CartAndHistory', () => {
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => {
+    vi.restoreAllMocks()
+    localStorage.clear()
+  })
 
   it('renders an empty cart and empty order history', async () => {
     renderPage()
@@ -72,5 +76,63 @@ describe('CartAndHistory', () => {
     await waitFor(() => expect(post).toHaveBeenCalled())
     expect(window.alert).toHaveBeenCalledWith('Error al procesar la orden.')
     client.clear()
+  })
+
+  it('refetches history when revisiting the account route', async () => {
+    const get = vi.spyOn(api, 'get')
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [{
+        id: 9,
+        status: 'COMPLETED',
+        items: [],
+      }] })
+    const { client, unmount } = renderPage()
+    await screen.findByText('Aún no has realizado ninguna compra.')
+    expect(get).toHaveBeenCalledTimes(1)
+
+    unmount()
+    render(
+      <QueryClientProvider client={client}>
+        <CartProvider><CartAndHistory /></CartProvider>
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByText('Orden #9')).toBeInTheDocument()
+    expect(get).toHaveBeenCalledTimes(2)
+    client.clear()
+  })
+
+  it('uses a separate history cache for each authenticated token', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    client.setQueryData(['orderHistory', 'first-user-token'], [{
+      id: 1, status: 'COMPLETED', items: [],
+    }])
+    localStorage.setItem('blossom_token', 'second-user-token')
+    vi.spyOn(api, 'get').mockResolvedValue({ data: [{
+      id: 2, status: 'COMPLETED', items: [],
+    }] })
+
+    render(
+      <QueryClientProvider client={client}>
+        <CartProvider><CartAndHistory /></CartProvider>
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByText('Orden #2')).toBeInTheDocument()
+    expect(screen.queryByText('Orden #1')).not.toBeInTheDocument()
+    expect(api.get).toHaveBeenCalledWith('/orders')
+    client.clear()
+  })
+
+  it('does not request order history without an authentication token', () => {
+    const get = vi.spyOn(api, 'get')
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <CartProvider><CartAndHistory /></CartProvider>
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByText(/inicia sesión para consultar tu historial/i)).toBeInTheDocument()
+    expect(get).not.toHaveBeenCalled()
   })
 })

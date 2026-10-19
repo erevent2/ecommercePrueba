@@ -44,5 +44,6 @@ class OrderControllerTest {
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertSame(history, result.getBody());
+        verify(orderService).getOrderHistory("person@example.com");
     }
 }

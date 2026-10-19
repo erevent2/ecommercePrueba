@@ -76,8 +76,6 @@ class OrderServiceTest {
 
     @Test
     void getOrderHistoryMapsItemsAndDefaultsMissingStatus() {
-        User user = new User();
-        user.setId(8L);
         Order order = new Order();
         order.setId(12L);
         order.setOrderDate(LocalDateTime.of(2025, 1, 2, 3, 4));
@@ -87,8 +85,8 @@ class OrderServiceTest {
         item.setQuantity(3);
         item.setUnitPrice(new BigDecimal("19.90"));
         order.getItems().add(item);
-        when(userRepository.findByEmail("person@example.com")).thenReturn(Optional.of(user));
-        when(orderRepository.findByUserIdOrderByOrderDateDesc(8L)).thenReturn(List.of(order));
+        when(orderRepository.findByUserEmailOrderByOrderDateDesc("person@example.com"))
+                .thenReturn(List.of(order));
 
         List<OrderResponse> result = orderService.getOrderHistory("person@example.com");
 
@@ -101,12 +99,10 @@ class OrderServiceTest {
 
     @Test
     void getOrderHistoryMapsExplicitStatusAndEmptyItems() {
-        User user = new User();
-        user.setId(8L);
         Order order = new Order();
         order.setStatus(OrderStatus.CANCELLED);
-        when(userRepository.findByEmail("person@example.com")).thenReturn(Optional.of(user));
-        when(orderRepository.findByUserIdOrderByOrderDateDesc(8L)).thenReturn(List.of(order));
+        when(orderRepository.findByUserEmailOrderByOrderDateDesc("person@example.com"))
+                .thenReturn(List.of(order));
 
         List<OrderResponse> result = orderService.getOrderHistory("person@example.com");
 
@@ -115,12 +111,12 @@ class OrderServiceTest {
     }
 
     @Test
-    void getOrderHistoryFailsWhenUserDoesNotExist() {
-        when(userRepository.findByEmail("missing@example.com")).thenReturn(Optional.empty());
+    void getOrderHistoryUsesAuthenticatedEmailAsScope() {
+        when(orderRepository.findByUserEmailOrderByOrderDateDesc("missing@example.com"))
+                .thenReturn(List.of());
 
-        assertThrows(ResourceNotFoundException.class,
-                () -> orderService.getOrderHistory("missing@example.com"));
-        verifyNoInteractions(orderRepository);
+        assertTrue(orderService.getOrderHistory("missing@example.com").isEmpty());
+        verify(orderRepository).findByUserEmailOrderByOrderDateDesc("missing@example.com");
     }
 
     private Product product() {

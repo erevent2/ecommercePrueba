@@ -53,13 +53,8 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getOrderHistory(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con email: " + email));
-                
-        // El repositorio traerá las órdenes y sus ítems en un solo JOIN FETCH
-        List<Order> userOrders = orderRepository.findByUserIdOrderByOrderDateDesc(user.getId());
+        List<Order> userOrders = orderRepository.findByUserEmailOrderByOrderDateDesc(email);
 
-        // Mapeamos las entidades a DTOs
         return userOrders.stream()
                 .map(this::mapOrderToResponse)
                 .collect(Collectors.toList());
